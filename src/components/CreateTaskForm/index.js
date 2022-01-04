@@ -8,18 +8,7 @@ const initialForm = { [formFields.name]: '' };
 
 export const CreateTaskForm = () => {
   const queryClient = useQueryClient();
-  const createTaskMutation = useMutation((name) => createTask(name), {
-    onMutate: () => {
-      setForm(initialForm);
-    },
-    onSuccess: ({ createTask }) => {
-      queryClient.setQueryData(tasksKey, (queryData) => ({
-        ...queryData,
-        tasks: [...queryData.tasks, createTask],
-      }));
-    },
-    onError: (err) => console.log(err),
-  });
+  const { mutateAsync, reset } = useMutation(createTask);
 
   const [form, setForm] = useState(initialForm);
 
@@ -27,9 +16,22 @@ export const CreateTaskForm = () => {
     setForm({ [event.target.name]: event.target.value });
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    createTaskMutation.mutate(form[formFields.name]);
+
+    try {
+      await mutateAsync(form[formFields.name]);
+      queryClient.invalidateQueries(tasksKey);
+    } catch (error) {
+      console.log(error.message);
+    } finally {
+      setForm(initialForm);
+    }
+  };
+
+  const handleReset = (event) => {
+    event.preventDefault();
+    reset();
   };
 
   return (
@@ -39,6 +41,7 @@ export const CreateTaskForm = () => {
       justifyContent="center"
       gap={3}
       onSubmit={handleSubmit}
+      onReset={handleReset}
     >
       <TextField
         color="info"
@@ -50,6 +53,9 @@ export const CreateTaskForm = () => {
       />
       <Button variant="outlined" type="submit">
         Create task
+      </Button>
+      <Button variant="outlined" type="reset">
+        Reset error
       </Button>
     </Box>
   );

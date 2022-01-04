@@ -1,17 +1,11 @@
-import { Alert, Box, LinearProgress, Skeleton, Snackbar } from '@mui/material';
+import { Alert, Box, Skeleton, Snackbar } from '@mui/material';
 import React from 'react';
 import { useQuery } from 'react-query';
 import { getTasks, tasksKey } from '../../api/tasks';
 import { Task } from './Task';
 
 export const TasksContainer = () => {
-  const {
-    data = {},
-    isFetching,
-    isLoading,
-    isError,
-  } = useQuery(tasksKey, getTasks);
-  const { tasks = [] } = data;
+  const { data = {}, isLoading, isError } = useQuery(tasksKey, getTasks);
 
   return (
     <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2}>
@@ -19,17 +13,13 @@ export const TasksContainer = () => {
         Array.from(new Array(6)).map((_, i) => (
           <Skeleton key={i} width="100%" />
         ))}
-      {isFetching && (
-        <LinearProgress style={{ position: 'fixed', top: 0, width: '100%' }} />
-      )}
       {isError && (
         <Snackbar autoHideDuration={2000}>
           <Alert severity="error">Error</Alert>
         </Snackbar>
       )}
-      {tasks.map((task) => (
-        <Task key={task.id} task={task} />
-      ))}
+      {data.tasks &&
+        data.tasks.map((task) => <Task key={task.id} task={task} />)}
     </Box>
   );
 };

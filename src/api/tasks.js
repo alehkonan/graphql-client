@@ -45,8 +45,10 @@ export const createTask = async (name) =>
     `
   );
 
-export const updateTask = async (id, name, isDone) =>
-  await request(
+export const updateTask = async (task) => {
+  const { id, name, isDone } = task;
+
+  return await request(
     API,
     gql`
       mutation {
@@ -58,6 +60,7 @@ export const updateTask = async (id, name, isDone) =>
       }
     `
   );
+};
 
 export const removeTask = async (id) =>
   await request(

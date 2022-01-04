@@ -11,68 +11,62 @@ import CheckIcon from '@mui/icons-material/Check';
 import { useMutation, useQueryClient } from 'react-query';
 import { removeTask, tasksKey, updateTask } from '../../api/tasks';
 
-export const Task = ({ task }) => {
+export const Task = ({ task: initialTask }) => {
   const queryClient = useQueryClient();
+  const { mutateAsync: update, isLoading: updating } = useMutation(updateTask);
+  const { mutateAsync: remove, isLoading: removing } = useMutation(removeTask);
+
   const [isEditMode, setEditMode] = useState(false);
-  const [taskName, setTaskName] = useState(task.name);
-  const [taskIsDone, setTaskDone] = useState(task.isDone);
+  const [task, setTask] = useState(initialTask);
 
-  const updateTaskMutation = useMutation(
-    (isDone = taskIsDone) => updateTask(task.id, taskName, isDone),
-    {
-      onMutate: async () => await queryClient.cancelQueries(),
-      onSuccess: ({ updateTask }) => {
-        setTaskDone(updateTask.isDone);
-        queryClient.setQueryData(tasksKey, (queryData) => ({
-          ...queryData,
-          tasks: queryData.tasks.map((task) =>
-            task.id === updateTask.id ? updateTask : task
-          ),
-        }));
-      },
+  const handleDone = async () => {
+    setTask((prev) => ({ ...prev, isDone: !prev.isDone }));
+    try {
+      await update(task);
+    } catch (error) {
+      queryClient.invalidateQueries(tasksKey);
     }
-  );
-
-  const removeTaskMutation = useMutation(() => removeTask(task.id), {
-    onSuccess: ({ removeTask }) => {
-      queryClient.setQueryData(tasksKey, (queryData) => ({
-        ...queryData,
-        tasks: queryData.tasks.filter((task) => task.id !== removeTask.id),
-      }));
-    },
-  });
-
-  const handleEdit = () => {
-    if (!isEditMode) {
-      setEditMode(true);
-      return;
-    }
-    updateTaskMutation.mutate();
-    setEditMode(false);
   };
 
-  const changeTaskName = (event) => setTaskName(event.target.value);
+  const handleUpdate = async () => {
+    setEditMode(!isEditMode);
+    if (!isEditMode) return;
+    try {
+      await update(task);
+    } catch (error) {
+      queryClient.invalidateQueries(tasksKey);
+    }
+  };
 
-  const disableAction =
-    updateTaskMutation.isLoading || removeTaskMutation.isLoading;
+  const handleDelete = async () => {
+    try {
+      await remove(task.id);
+      queryClient.invalidateQueries(tasksKey);
+    } catch (error) {
+      console.error(error.message);
+    }
+  };
 
   return (
     <Card style={{ display: 'flex', alignItems: 'center' }}>
-      <Checkbox
-        checked={taskIsDone}
-        onChange={() => updateTaskMutation.mutate(!taskIsDone)}
-      />
+      <Checkbox checked={task.isDone} onChange={handleDone} />
       <Box style={{ flexGrow: 1 }}>
         {isEditMode ? (
-          <InputBase value={taskName} onChange={changeTaskName} fullWidth />
+          <InputBase
+            value={task.name}
+            onChange={(e) =>
+              setTask((prev) => ({ ...prev, name: e.target.value }))
+            }
+            fullWidth
+          />
         ) : (
-          <Typography>{taskName}</Typography>
+          <Typography>{task.name}</Typography>
         )}
       </Box>
-      <IconButton onClick={handleEdit} disabled={disableAction}>
+      <IconButton onClick={handleUpdate} disabled={updating || removing}>
         {isEditMode ? <CheckIcon /> : <EditIcon />}
       </IconButton>
-      <IconButton onClick={removeTaskMutation.mutate} disabled={disableAction}>
+      <IconButton onClick={handleDelete} disabled={updating || removing}>
         <DeleteIcon />
       </IconButton>
     </Card>
